@@ -124,3 +124,23 @@ export function getWindDirection(dir: string): string {
   return directions[dir] || dir
 }
 
+// Function to determine if weather condition is sunny
+export function isSunnyCondition(conditionCode: number, conditionText: string): boolean {
+  // OpenWeatherMap condition codes for clear/sunny weather
+  const sunnyCodes = [800, 801] // 800 is clear sky, 801 is few clouds
+
+  // Check if the condition code is in our sunny codes list
+  if (sunnyCodes.includes(conditionCode)) {
+    return true
+  }
+
+  // Check the condition text for sunny keywords
+  const sunnyKeywords = ["sunny", "clear", "słonecznie", "bezchmurnie"]
+  return sunnyKeywords.some((keyword) => conditionText.toLowerCase().includes(keyword))
+}
+
+// Function to determine if it's daytime based on current time and sunrise/sunset
+export function isDaytime(currentTime: number, sunrise: number, sunset: number): boolean {
+  return currentTime >= sunrise && currentTime < sunset
+}
+

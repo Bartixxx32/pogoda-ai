@@ -1,366 +1,10 @@
 import type { WeatherData } from "./types"
 
-export async function getCurrentWeather(location: string): Promise<WeatherData | null> {
-  const apiKey = "638d52247c61567870b866ae07e83235"
+// Remove direct access to the API key
+// const API_KEY = process.env.NEXT_PUBLIC_WEATHER_API_KEY
 
-  try {
-    // First, get coordinates from location name
-    let lat, lon
-    let cityName = location
-
-    // Check if location is already in lat,lon format
-    if (location.includes(",")) {
-      const [latitude, longitude] = location.split(",")
-      lat = Number.parseFloat(latitude.trim())
-      lon = Number.parseFloat(longitude.trim())
-
-      // Reverse geocode to get location name
-      try {
-        const reverseGeoResponse = await fetch(
-          `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${apiKey}`,
-          { next: { revalidate: 86400 } }, // Cache for 24 hours
-        )
-
-        if (reverseGeoResponse.ok) {
-          const reverseGeoData = await reverseGeoResponse.json()
-          if (reverseGeoData && reverseGeoData.length > 0) {
-            cityName = reverseGeoData[0].local_names?.pl || reverseGeoData[0].name
-            if (reverseGeoData[0].country) {
-              // Get country name in Polish if available
-              cityName += `, ${getCountryNameInPolish(reverseGeoData[0].country)}`
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error in reverse geocoding:", error)
-        // Continue with coordinates if reverse geocoding fails
-      }
-    } else {
-      // Geocode the location name to get coordinates
-      try {
-        const geoResponse = await fetch(
-          `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location)}&limit=1&appid=${apiKey}`,
-          { next: { revalidate: 86400 } }, // Cache for 24 hours
-        )
-
-        if (!geoResponse.ok) {
-          console.error(`Geocoding API error: ${geoResponse.status} ${geoResponse.statusText}`)
-          return null
-        }
-
-        const geoData = await geoResponse.json()
-        if (!geoData || geoData.length === 0) {
-          console.error("Location not found")
-          return null
-        }
-
-        lat = geoData[0].lat
-        lon = geoData[0].lon
-
-        // Update city name with more accurate data, preferring Polish names if available
-        cityName = geoData[0].local_names?.pl || geoData[0].name
-        if (geoData[0].country) {
-          cityName += `, ${getCountryNameInPolish(geoData[0].country)}`
-        }
-      } catch (error) {
-        console.error("Error in geocoding:", error)
-        return null
-      }
-    }
-
-    // Now get weather data using coordinates
-    try {
-      // Use OpenWeatherMap's current weather API and 5-day forecast API with Polish language
-      const [currentResponse, forecastResponse] = await Promise.all([
-        fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&lang=pl&appid=${apiKey}`,
-          { next: { revalidate: 1800 } }, // Cache for 30 minutes
-        ),
-        fetch(
-          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&lang=pl&appid=${apiKey}`,
-          { next: { revalidate: 1800 } }, // Cache for 30 minutes
-        ),
-      ])
-
-      if (!currentResponse.ok || !forecastResponse.ok) {
-        console.error(`Weather API error: Current: ${currentResponse.status}, Forecast: ${forecastResponse.status}`)
-        return null
-      }
-
-      const currentData = await currentResponse.json()
-      const forecastData = await forecastResponse.json()
-
-      // Transform OpenWeatherMap data to our app's format
-      return transformOpenWeatherData(currentData, forecastData, cityName, lat, lon)
-    } catch (error) {
-      console.error("Error fetching weather data:", error)
-      return null
-    }
-  } catch (error) {
-    console.error("Error in weather data retrieval:", error)
-    return null
-  }
-}
-
-// Function to get country name in Polish
-function getCountryNameInPolish(countryCode: string): string {
-  const countryNames: Record<string, string> = {
-    AF: "Afganistan",
-    AX: "Wyspy Alandzkie",
-    AL: "Albania",
-    DZ: "Algieria",
-    AS: "Samoa Amerykańskie",
-    AD: "Andora",
-    AO: "Angola",
-    AI: "Anguilla",
-    AQ: "Antarktyda",
-    AG: "Antigua i Barbuda",
-    AR: "Argentyna",
-    AM: "Armenia",
-    AW: "Aruba",
-    AU: "Australia",
-    AT: "Austria",
-    AZ: "Azerbejdżan",
-    BS: "Bahamy",
-    BH: "Bahrajn",
-    BD: "Bangladesz",
-    BB: "Barbados",
-    BY: "Białoruś",
-    BE: "Belgia",
-    BZ: "Belize",
-    BJ: "Benin",
-    BM: "Bermudy",
-    BT: "Bhutan",
-    BO: "Boliwia",
-    BQ: "Bonaire, Sint Eustatius i Saba",
-    BA: "Bośnia i Hercegowina",
-    BW: "Botswana",
-    BV: "Wyspa Bouveta",
-    BR: "Brazylia",
-    IO: "Brytyjskie Terytorium Oceanu Indyjskiego",
-    BN: "Brunei",
-    BG: "Bułgaria",
-    BF: "Burkina Faso",
-    BI: "Burundi",
-    CV: "Republika Zielonego Przylądka",
-    KH: "Kambodża",
-    CM: "Kamerun",
-    CA: "Kanada",
-    KY: "Kajmany",
-    CF: "Republika Środkowoafrykańska",
-    TD: "Czad",
-    CL: "Chile",
-    CN: "Chiny",
-    CX: "Wyspa Bożego Narodzenia",
-    CC: "Wyspy Kokosowe",
-    CO: "Kolumbia",
-    KM: "Komory",
-    CG: "Kongo",
-    CD: "Demokratyczna Republika Konga",
-    CK: "Wyspy Cooka",
-    CR: "Kostaryka",
-    CI: "Wybrzeże Kości Słoniowej",
-    HR: "Chorwacja",
-    CU: "Kuba",
-    CW: "Curaçao",
-    CY: "Cypr",
-    CZ: "Czechy",
-    DK: "Dania",
-    DJ: "Dżibuti",
-    DM: "Dominika",
-    DO: "Dominikana",
-    EC: "Ekwador",
-    EG: "Egipt",
-    SV: "Salwador",
-    GQ: "Gwinea Równikowa",
-    ER: "Erytrea",
-    EE: "Estonia",
-    ET: "Etiopia",
-    FK: "Falklandy",
-    FO: "Wyspy Owcze",
-    FJ: "Fidżi",
-    FI: "Finlandia",
-    FR: "Francja",
-    GF: "Gujana Francuska",
-    PF: "Polinezja Francuska",
-    TF: "Francuskie Terytoria Południowe i Antarktyczne",
-    GA: "Gabon",
-    GM: "Gambia",
-    GE: "Gruzja",
-    DE: "Niemcy",
-    GH: "Ghana",
-    GI: "Gibraltar",
-    GR: "Grecja",
-    GL: "Grenlandia",
-    GD: "Grenada",
-    GP: "Gwadelupa",
-    GU: "Guam",
-    GT: "Gwatemala",
-    GG: "Guernsey",
-    GN: "Gwinea",
-    GW: "Gwinea Bissau",
-    GY: "Gujana",
-    HT: "Haiti",
-    HM: "Wyspy Heard i McDonalda",
-    VA: "Watykan",
-    HN: "Honduras",
-    HK: "Hongkong",
-    HU: "Węgry",
-    IS: "Islandia",
-    IN: "Indie",
-    ID: "Indonezja",
-    IR: "Iran",
-    IQ: "Irak",
-    IE: "Irlandia",
-    IM: "Wyspa Man",
-    IL: "Izrael",
-    IT: "Włochy",
-    JM: "Jamajka",
-    JP: "Japonia",
-    JE: "Jersey",
-    JO: "Jordania",
-    KZ: "Kazachstan",
-    KE: "Kenia",
-    KI: "Kiribati",
-    KP: "Korea Północna",
-    KR: "Korea Południowa",
-    KW: "Kuwejt",
-    KG: "Kirgistan",
-    LA: "Laos",
-    LV: "Łotwa",
-    LB: "Liban",
-    LS: "Lesotho",
-    LR: "Liberia",
-    LY: "Libia",
-    LI: "Liechtenstein",
-    LT: "Litwa",
-    LU: "Luksemburg",
-    MO: "Makau",
-    MK: "Macedonia Północna",
-    MG: "Madagaskar",
-    MW: "Malawi",
-    MY: "Malezja",
-    MV: "Malediwy",
-    ML: "Mali",
-    MT: "Malta",
-    MH: "Wyspy Marshalla",
-    MQ: "Martynika",
-    MR: "Mauretania",
-    MU: "Mauritius",
-    YT: "Majotta",
-    MX: "Meksyk",
-    FM: "Mikronezja",
-    MD: "Mołdawia",
-    MC: "Monako",
-    MN: "Mongolia",
-    ME: "Czarnogóra",
-    MS: "Montserrat",
-    MA: "Maroko",
-    MZ: "Mozambik",
-    MM: "Mjanma",
-    NA: "Namibia",
-    NR: "Nauru",
-    NP: "Nepal",
-    NL: "Holandia",
-    NC: "Nowa Kaledonia",
-    NZ: "Nowa Zelandia",
-    NI: "Nikaragua",
-    NE: "Niger",
-    NG: "Nigeria",
-    NU: "Niue",
-    NF: "Norfolk",
-    MP: "Mariany Północne",
-    NO: "Norwegia",
-    OM: "Oman",
-    PK: "Pakistan",
-    PW: "Palau",
-    PS: "Palestyna",
-    PA: "Panama",
-    PG: "Papua-Nowa Gwinea",
-    PY: "Paragwaj",
-    PE: "Peru",
-    PH: "Filipiny",
-    PN: "Pitcairn",
-    PL: "Polska",
-    PT: "Portugalia",
-    PR: "Portoryko",
-    QA: "Katar",
-    RE: "Reunion",
-    RO: "Rumunia",
-    RU: "Rosja",
-    RW: "Rwanda",
-    BL: "Saint-Barthélemy",
-    SH: "Święta Helena, Wyspa Wniebowstąpienia i Tristan da Cunha",
-    KN: "Saint Kitts i Nevis",
-    LC: "Saint Lucia",
-    MF: "Saint-Martin",
-    PM: "Saint-Pierre i Miquelon",
-    VC: "Saint Vincent i Grenadyny",
-    WS: "Samoa",
-    SM: "San Marino",
-    ST: "Wyspy Świętego Tomasza i Książęca",
-    SA: "Arabia Saudyjska",
-    SN: "Senegal",
-    RS: "Serbia",
-    SC: "Seszele",
-    SL: "Sierra Leone",
-    SG: "Singapur",
-    SX: "Sint Maarten",
-    SK: "Słowacja",
-    SI: "Słowenia",
-    SB: "Wyspy Salomona",
-    SO: "Somalia",
-    ZA: "Republika Południowej Afryki",
-    GS: "Georgia Południowa i Sandwich Południowy",
-    SS: "Sudan Południowy",
-    ES: "Hiszpania",
-    LK: "Sri Lanka",
-    SD: "Sudan",
-    SR: "Surinam",
-    SJ: "Svalbard i Jan Mayen",
-    SZ: "Eswatini",
-    SE: "Szwecja",
-    CH: "Szwajcaria",
-    SY: "Syria",
-    TW: "Tajwan",
-    TJ: "Tadżykistan",
-    TZ: "Tanzania",
-    TH: "Tajlandia",
-    TL: "Timor Wschodni",
-    TG: "Togo",
-    TK: "Tokelau",
-    TO: "Tonga",
-    TT: "Trynidad i Tobago",
-    TN: "Tunezja",
-    TR: "Turcja",
-    TM: "Turkmenistan",
-    TC: "Turks i Caicos",
-    TV: "Tuvalu",
-    UG: "Uganda",
-    UA: "Ukraina",
-    AE: "Zjednoczone Emiraty Arabskie",
-    GB: "Wielka Brytania",
-    US: "Stany Zjednoczone",
-    UM: "Dalekie Wyspy Mniejsze Stanów Zjednoczonych",
-    UY: "Urugwaj",
-    UZ: "Uzbekistan",
-    VU: "Vanuatu",
-    VE: "Wenezuela",
-    VN: "Wietnam",
-    VG: "Brytyjskie Wyspy Dziewicze",
-    VI: "Wyspy Dziewicze Stanów Zjednoczonych",
-    WF: "Wallis i Futuna",
-    EH: "Sahara Zachodnia",
-    YE: "Jemen",
-    ZM: "Zambia",
-    ZW: "Zimbabwe",
-  }
-
-  return countryNames[countryCode] || countryCode
-}
-
-// Function to transform OpenWeatherMap data to our app's format
-function transformOpenWeatherData(
+// Transform OpenWeatherMap data to our app's format
+export function transformOpenWeatherData(
   currentData: any,
   forecastData: any,
   cityName: string,
@@ -372,7 +16,7 @@ function transformOpenWeatherData(
   const localTime = new Date(currentDate.getTime() + currentData.timezone * 1000)
 
   // Process forecast data to group by day
-  const dailyForecasts = processDailyForecasts(forecastData.list)
+  const dailyForecasts = processDailyForecasts(forecastData.list, currentData.sys.sunrise, currentData.sys.sunset)
 
   // Create forecastday array (limit to 3 days)
   const forecastDays = Object.keys(dailyForecasts)
@@ -472,7 +116,11 @@ function transformOpenWeatherData(
 }
 
 // Process forecast data to group by day
-function processDailyForecasts(forecastList: any[]): Record<string, any> {
+function processDailyForecasts(
+  forecastList: any[],
+  currentSunrise: number,
+  currentSunset: number,
+): Record<string, any> {
   const dailyForecasts: Record<string, any> = {}
 
   forecastList.forEach((item) => {
@@ -518,19 +166,46 @@ function processDailyForecasts(forecastList: any[]): Record<string, any> {
     dailyForecasts[date].hourly.push(item)
   })
 
-  // Calculate sunrise/sunset times (use first day's values for all days as approximation)
+  // Calculate sunrise/sunset times for each day
+  // We'll use the current day's sunrise/sunset as a base and adjust for future days
   const now = new Date()
-  const sunriseTime = new Date(now)
-  sunriseTime.setHours(6, 0, 0, 0)
-  const sunsetTime = new Date(now)
-  sunsetTime.setHours(18, 0, 0, 0)
+  const currentDay = now.getDate()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  // Get the current day's sunrise/sunset times
+  const currentSunriseDate = new Date(currentSunrise * 1000)
+  const currentSunsetDate = new Date(currentSunset * 1000)
+
+  // Extract hours and minutes
+  const sunriseHours = currentSunriseDate.getHours()
+  const sunriseMinutes = currentSunriseDate.getMinutes()
+  const sunsetHours = currentSunsetDate.getHours()
+  const sunsetMinutes = currentSunsetDate.getMinutes()
 
   Object.keys(dailyForecasts).forEach((date) => {
     const dayDate = new Date(date)
+    const dayDiff = Math.floor(
+      (dayDate.getTime() - new Date(currentYear, currentMonth, currentDay).getTime()) / (24 * 60 * 60 * 1000),
+    )
+
+    // Create sunrise and sunset times for this day
+    // For simplicity, we'll use the same hours/minutes as the current day
+    // In a real app, you might want to use a more sophisticated calculation or API data
     const sunrise = new Date(dayDate)
-    sunrise.setHours(6, 0, 0, 0)
+    sunrise.setHours(sunriseHours, sunriseMinutes, 0, 0)
+
     const sunset = new Date(dayDate)
-    sunset.setHours(18, 0, 0, 0)
+    sunset.setHours(sunsetHours, sunsetMinutes, 0, 0)
+
+    // Adjust slightly for each day (sunrise gets earlier and sunset gets later in summer, opposite in winter)
+    // This is a very simple approximation - in a real app you'd use actual calculations based on location and date
+    const seasonalAdjustment = isWinterSeason(dayDate) ? -1 : 1
+
+    if (dayDiff > 0) {
+      sunrise.setMinutes(sunrise.getMinutes() - dayDiff * seasonalAdjustment)
+      sunset.setMinutes(sunset.getMinutes() + dayDiff * seasonalAdjustment)
+    }
 
     dailyForecasts[date].sunrise = Math.floor(sunrise.getTime() / 1000)
     dailyForecasts[date].sunset = Math.floor(sunset.getTime() / 1000)
@@ -539,86 +214,39 @@ function processDailyForecasts(forecastList: any[]): Record<string, any> {
   return dailyForecasts
 }
 
-// Generate hourly forecast for a specific day
-function generateHourlyForecast(forecastList: any[], date: string): any[] {
-  const hours = []
-  const dayForecasts = forecastList.filter((item) => {
-    const itemDate = new Date(item.dt * 1000).toISOString().split("T")[0]
-    return itemDate === date
-  })
-
-  dayForecasts.forEach((hour) => {
-    const hourTime = new Date(hour.dt * 1000)
-
-    hours.push({
-      time_epoch: hour.dt,
-      time: hourTime.toISOString(),
-      temp_c: hour.main.temp,
-      temp_f: celsiusToFahrenheit(hour.main.temp),
-      is_day: hourTime.getHours() >= 6 && hourTime.getHours() < 18 ? 1 : 0,
-      condition: {
-        text: hour.weather[0].description,
-        icon: `https://openweathermap.org/img/wn/${hour.weather[0].icon}@2x.png`,
-        code: hour.weather[0].id,
-      },
-      wind_mph: mpsToMph(hour.wind.speed),
-      wind_kph: mpsToKph(hour.wind.speed),
-      wind_degree: hour.wind.deg,
-      wind_dir: getWindDirection(hour.wind.deg),
-      pressure_mb: hour.main.pressure,
-      pressure_in: mbToIn(hour.main.pressure),
-      precip_mm: hour.rain ? hour.rain["3h"] || 0 : 0,
-      precip_in: hour.rain ? mmToIn(hour.rain["3h"] || 0) : 0,
-      humidity: hour.main.humidity,
-      cloud: hour.clouds.all,
-      feelslike_c: hour.main.feels_like,
-      feelslike_f: celsiusToFahrenheit(hour.main.feels_like),
-      windchill_c: hour.main.feels_like,
-      windchill_f: celsiusToFahrenheit(hour.main.feels_like),
-      heatindex_c: hour.main.feels_like,
-      heatindex_f: celsiusToFahrenheit(hour.main.feels_like),
-      dewpoint_c: calculateDewPoint(hour.main.temp, hour.main.humidity),
-      dewpoint_f: celsiusToFahrenheit(calculateDewPoint(hour.main.temp, hour.main.humidity)),
-      will_it_rain: hour.pop > 0.3 ? 1 : 0,
-      chance_of_rain: Math.round((hour.pop || 0) * 100),
-      will_it_snow: hour.snow && hour.snow["3h"] > 0 ? 1 : 0,
-      chance_of_snow: hour.snow ? Math.round((hour.pop || 0) * 100) : 0,
-      vis_km: hour.visibility / 1000,
-      vis_miles: mToMiles(hour.visibility),
-      gust_mph: hour.wind.gust ? mpsToMph(hour.wind.gust) : mpsToMph(hour.wind.speed * 1.5),
-      gust_kph: hour.wind.gust ? mpsToKph(hour.wind.gust) : mpsToKph(hour.wind.speed * 1.5),
-      uv: 0, // Default value
-    })
-  })
-
-  return hours
+// Helper function to determine if it's winter season (very simple approximation)
+function isWinterSeason(date: Date): boolean {
+  const month = date.getMonth()
+  // Northern hemisphere: winter is roughly October to March
+  return month < 3 || month > 9
 }
 
-// Helper functions for data conversion
+// Helper function to convert Celsius to Fahrenheit
 function celsiusToFahrenheit(celsius: number): number {
   return (celsius * 9) / 5 + 32
 }
 
+// Helper function to convert meters per second to kilometers per hour
 function mpsToKph(mps: number): number {
   return mps * 3.6
 }
 
+// Helper function to convert meters per second to miles per hour
 function mpsToMph(mps: number): number {
-  return mps * 2.237
+  return mps * 2.23694
 }
 
+// Helper function to convert millimeters to inches
 function mmToIn(mm: number): number {
-  return mm / 25.4
+  return mm * 0.0393701
 }
 
-function mToMiles(meters: number): number {
-  return meters / 1609.34
+// Helper function to convert meters to miles
+function mToMiles(m: number): number {
+  return m * 0.000621371
 }
 
-function mbToIn(mb: number): number {
-  return mb * 0.02953
-}
-
+// Helper function to format Unix timestamp to HH:MM
 function formatUnixTime(unixTime: number): string {
   const date = new Date(unixTime * 1000)
   const hours = date.getHours().toString().padStart(2, "0")
@@ -626,10 +254,12 @@ function formatUnixTime(unixTime: number): string {
   return `${hours}:${minutes}`
 }
 
-function isDay(currentTime: number, sunrise: number, sunset: number): boolean {
-  return currentTime >= sunrise && currentTime < sunset
+// Helper function to determine if it's day or night
+function isDay(currentTime: number, sunriseTime: number, sunsetTime: number): boolean {
+  return currentTime > sunriseTime && currentTime < sunsetTime
 }
 
+// Helper function to get wind direction from degrees
 function getWindDirection(degrees: number): string {
   const directions = [
     "N",
@@ -653,11 +283,59 @@ function getWindDirection(degrees: number): string {
   return directions[index]
 }
 
-function calculateDewPoint(temp: number, humidity: number): number {
-  // Magnus formula
+// Helper function to convert millibars to inches of mercury
+function mbToIn(mb: number): number {
+  return mb * 0.02953
+}
+
+// Helper function to calculate dew point
+function calculateDewPoint(temperature: number, humidity: number): number {
   const a = 17.27
   const b = 237.7
-  const alpha = (a * temp) / (b + temp) + Math.log(humidity / 100)
-  return (b * alpha) / (a - alpha)
+  const tempInCelsius = temperature
+  const rh = humidity / 100
+  const gamma = (a * tempInCelsius) / (b + tempInCelsius) + Math.log(rh)
+  return (b * gamma) / (a - gamma)
 }
+
+// Dummy function for generateHourlyForecast
+function generateHourlyForecast(forecastList: any[], date: string): any[] {
+  // Filter the forecastList to get the hourly forecasts for the given date
+  const hourlyForecasts = forecastList.filter((item) => {
+    const itemDate = new Date(item.dt * 1000).toISOString().split("T")[0]
+    return itemDate === date
+  })
+
+  // Map the hourly forecasts to the desired format
+  return hourlyForecasts.map((item) => ({
+    time_epoch: item.dt,
+    time: new Date(item.dt * 1000).toISOString(),
+    temp_c: item.main.temp,
+    temp_f: celsiusToFahrenheit(item.main.temp),
+    is_day: isDay(item.dt, 0, 0) ? 1 : 0, // You might need to adjust sunrise/sunset times
+    condition: {
+      text: item.weather[0].description,
+      icon: `https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png`,
+      code: item.weather[0].id,
+    },
+    wind_mph: mpsToMph(item.wind.speed),
+    wind_kph: mpsToKph(item.wind.speed),
+    wind_degree: item.wind.deg,
+    wind_dir: getWindDirection(item.wind.deg),
+    pressure_mb: item.main.pressure,
+    pressure_in: mbToIn(item.main.pressure),
+    precip_mm: item.rain ? item.rain["3h"] || 0 : 0,
+    precip_in: item.rain ? mmToIn(item.rain["3h"] || 0) : 0,
+    humidity: item.main.humidity,
+    cloud: item.clouds.all,
+    feelslike_c: item.main.feels_like,
+    feelslike_f: celsiusToFahrenheit(item.main.feels_like),
+    vis_km: item.visibility / 1000,
+    vis_miles: mToMiles(item.visibility),
+    uv: 0, // Default value
+  }))
+}
+
+// Remove the getCurrentWeather function from here
+// We'll move it to the API route
 

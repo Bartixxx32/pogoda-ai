@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MapPin } from "lucide-react"
@@ -10,24 +10,33 @@ export function GeolocationButton() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
+  const defaultLocationUsed = useRef(false)
+  const [isGeolocationAvailable, setIsGeolocationAvailable] = useState(
+    typeof navigator !== "undefined" && "geolocation" in navigator,
+  )
 
   const useDefaultLocation = useCallback(() => {
-    toast({
-      title: "Używam domyślnej lokalizacji",
-      description: "Geolokalizacja jest niedostępna w tym środowisku. Wyświetlam pogodę dla Warszawy.",
-    })
-    router.push(`/?location=Warszawa`)
-    setIsLoading(false)
+    if (!defaultLocationUsed.current) {
+      toast({
+        title: "Używam domyślnej lokalizacji",
+        description: "Geolokalizacja jest niedostępna w tym środowisku. Wyświetlam pogodę dla Warszawy.",
+        variant: "default",
+      })
+      router.push(`/?location=Warszawa`)
+      setIsLoading(false)
+      defaultLocationUsed.current = true
+    }
   }, [router, toast, setIsLoading])
 
   const handleGetLocation = () => {
     setIsLoading(true)
+    defaultLocationUsed.current = false
 
     // In preview environments, geolocation might be blocked
     // So we'll provide a fallback to a default location
 
     // Check if geolocation is supported
-    if (!navigator.geolocation) {
+    if (!isGeolocationAvailable) {
       useDefaultLocation()
       return
     }
@@ -65,10 +74,14 @@ export function GeolocationButton() {
       size="icon"
       onClick={handleGetLocation}
       disabled={isLoading}
-      className="frosted-glass border-0 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all duration-300"
+      className="glass-button h-11 w-11 rounded-full flex items-center justify-center"
       title="Użyj mojej lokalizacji"
     >
-      <MapPin className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+      {isLoading ? (
+        <div className="h-5 w-5 border-2 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+      ) : (
+        <MapPin className="h-5 w-5 text-sky-500 dark:text-sky-400" />
+      )}
       <span className="sr-only">Użyj mojej lokalizacji</span>
     </Button>
   )
