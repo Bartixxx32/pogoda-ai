@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatHourlyTime, formatTemperature } from "@/lib/utils"
+import { formatHourlyTime, formatTemperature, formatPercentage } from "@/lib/utils"
 import type { HourForecast } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight } from "lucide-react"
@@ -104,7 +104,7 @@ export function HourlyForecast({ forecast }: { forecast: HourForecast[] }) {
               <div key={index} className="flex flex-col items-center space-y-2 w-[80px]">
                 <span className="text-sm font-medium">{formatHourlyTime(hour.time)}</span>
                 <Image
-                  src={`https:${hour.condition.icon}`}
+                  src={hour.condition.icon || "/placeholder.svg"}
                   alt={hour.condition.text}
                   width={40}
                   height={40}
@@ -112,7 +112,7 @@ export function HourlyForecast({ forecast }: { forecast: HourForecast[] }) {
                 />
                 <span className="text-lg font-bold">{formatTemperature(hour.temp_c)}°</span>
                 <div className="flex items-center text-xs text-muted-foreground">
-                  <span>{hour.chance_of_rain}%</span>
+                  <span>{formatPercentage(hour.chance_of_rain)}%</span>
                 </div>
               </div>
             ))}

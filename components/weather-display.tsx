@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { formatDate, formatTemperature } from "@/lib/utils"
+import { formatDate, formatTemperature, formatWindSpeed, formatPercentage } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { WeatherData } from "@/lib/types"
 import { Droplets, Thermometer, Wind, Sun } from "lucide-react"
@@ -27,7 +27,7 @@ export function WeatherDisplay({ weather, unit = "c" }: { weather: WeatherData; 
           </div>
           <div className="flex items-center">
             <Image
-              src={`https:${weather.current.condition.icon}`}
+              src={weather.current.condition.icon || "/placeholder.svg"}
               alt={weather.current.condition.text}
               width={80}
               height={80}
@@ -58,12 +58,12 @@ export function WeatherDisplay({ weather, unit = "c" }: { weather: WeatherData; 
             <div className="flex items-center gap-2">
               <Wind className="h-4 w-4 text-blue-500" />
               <span className="text-muted-foreground">Wiatr:</span>
-              <span className="font-medium">{weather.current.wind_kph} km/h</span>
+              <span className="font-medium">{formatWindSpeed(weather.current.wind_kph)} km/h</span>
             </div>
             <div className="flex items-center gap-2">
               <Droplets className="h-4 w-4 text-blue-500" />
               <span className="text-muted-foreground">Wilgotność:</span>
-              <span className="font-medium">{weather.current.humidity}%</span>
+              <span className="font-medium">{formatPercentage(weather.current.humidity)}%</span>
             </div>
             <div className="flex items-center gap-2">
               <Sun className="h-4 w-4 text-blue-500" />

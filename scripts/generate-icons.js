@@ -1,26 +1,41 @@
 const fs = require("fs")
 const path = require("path")
-const { execSync } = require("child_process")
 
-// Create icons directory if it doesn't exist
+// Create directories if they don't exist
 const iconsDir = path.join(__dirname, "../public/icons")
+const maskableDir = path.join(__dirname, "../public/icons/maskable")
+
 if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true })
+}
+
+if (!fs.existsSync(maskableDir)) {
+  fs.mkdirSync(maskableDir, { recursive: true })
 }
 
 // Define icon sizes
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512]
 
-// Generate icons using the base SVG
+// Generate placeholder files for regular icons
 sizes.forEach((size) => {
-  console.log(`Generating ${size}x${size} icon...`)
-
-  // This is a placeholder. In a real environment, you would use a tool like Sharp
-  // to convert the SVG to PNG in different sizes.
-  // For this example, we'll just create placeholder files.
-
+  console.log(`Generating regular icon ${size}x${size}...`)
   const iconPath = path.join(iconsDir, `icon-${size}x${size}.png`)
-  fs.writeFileSync(iconPath, `This would be a ${size}x${size} icon`)
+
+  // In a real project, you would use a tool like Sharp to convert SVG to PNG
+  // For this example, we'll just create placeholder files
+  fs.writeFileSync(iconPath, `This would be a ${size}x${size} regular icon`)
+
+  console.log(`Created ${iconPath}`)
+})
+
+// Generate placeholder files for maskable icons
+sizes.forEach((size) => {
+  console.log(`Generating maskable icon ${size}x${size}...`)
+  const iconPath = path.join(maskableDir, `maskable-${size}x${size}.png`)
+
+  // In a real project, you would use a tool like Sharp to convert SVG to PNG
+  // For this example, we'll just create placeholder files
+  fs.writeFileSync(iconPath, `This would be a ${size}x${size} maskable icon`)
 
   console.log(`Created ${iconPath}`)
 })

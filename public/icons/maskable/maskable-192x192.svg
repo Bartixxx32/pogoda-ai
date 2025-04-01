@@ -5,8 +5,10 @@
       <stop offset="100%" stop-color="#6366f1" />
     </linearGradient>
   </defs>
-  <rect width="192" height="192" rx="48" fill="url(#gradient)" />
-  <g transform="translate(48, 48) scale(0.5)">
+  <!-- Full background for maskable icon -->
+  <rect width="192" height="192" fill="url(#gradient)" />
+  <!-- Safe zone for maskable icon (centered in the middle 80%) -->
+  <g transform="translate(19.2, 19.2) scale(0.8)">
     <circle cx="96" cy="96" r="54" fill="#ffffff" opacity="0.9" />
     <path d="M96 48c-26.5 0-48 21.5-48 48s21.5 48 48 48 48-21.5 48-48-21.5-48-48-48zm0 90c-23.2 0-42-18.8-42-42s18.8-42 42-42 42 18.8 42 42-18.8 42-42 42z" fill="#3b82f6" />
     <path d="M96 66c-16.6 0-30 13.4-30 30s13.4 30 30 30 30-13.4 30-30-13.4-30-30-30zm0 54c-13.2 0-24-10.8-24-24s10.8-24 24-24 24 10.8 24 24-10.8 24-24 24z" fill="#3b82f6" />

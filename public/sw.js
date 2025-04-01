@@ -1,6 +1,12 @@
-// Service worker simplified version
+// Service worker with placeholder icon URLs
 const CACHE_NAME = "weather-app-v1"
-const urlsToCache = ["/", "/offline", "/manifest.json"]
+const urlsToCache = [
+  "/",
+  "/offline",
+  "/manifest.json",
+  "https://placehold.co/192x192/3b82f6/FFFFFF.png?text=Weather",
+  "https://placehold.co/512x512/3b82f6/FFFFFF.png?text=Weather",
+]
 
 // Install event
 self.addEventListener("install", (event) => {

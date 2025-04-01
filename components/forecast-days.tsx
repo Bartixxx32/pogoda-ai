@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { formatDate, formatTemperature } from "@/lib/utils"
+import { formatDate, formatTemperature, formatWindSpeed, formatPercentage } from "@/lib/utils"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ForecastDay } from "@/lib/types"
 import { Droplets, Wind, Sun, CloudRain } from "lucide-react"
@@ -34,7 +34,7 @@ export function ForecastDays({ forecast, unit = "c" }: { forecast: ForecastDay[]
                     </p>
                   </div>
                   <Image
-                    src={`https:${day.day.condition.icon}`}
+                    src={day.day.condition.icon || "/placeholder.svg"}
                     alt={day.day.condition.text}
                     width={48}
                     height={48}
@@ -46,17 +46,17 @@ export function ForecastDays({ forecast, unit = "c" }: { forecast: ForecastDay[]
                   <div className="flex items-center gap-1">
                     <CloudRain className="h-3 w-3 text-blue-500" />
                     <span className="text-muted-foreground">Deszcz:</span>
-                    <span>{day.day.daily_chance_of_rain}%</span>
+                    <span>{formatPercentage(day.day.daily_chance_of_rain)}%</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Droplets className="h-3 w-3 text-blue-500" />
                     <span className="text-muted-foreground">Wilgotność:</span>
-                    <span>{day.day.avghumidity}%</span>
+                    <span>{formatPercentage(day.day.avghumidity)}%</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Wind className="h-3 w-3 text-blue-500" />
                     <span className="text-muted-foreground">Wiatr:</span>
-                    <span>{day.day.maxwind_kph} km/h</span>
+                    <span>{formatWindSpeed(day.day.maxwind_kph)} km/h</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Sun className="h-3 w-3 text-blue-500" />
